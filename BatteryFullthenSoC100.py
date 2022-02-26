@@ -64,21 +64,28 @@ def on_message(client, userdata, msg):
 
         global grid, soc, power
         if msg.topic == "N/" + cerboserial + "/vebus/276/Ac/ActiveIn/P":   # Grid Import/Export
-
-            grid = json.loads(msg.payload)
-            grid = round(float(grid['value']), 2)
+            if msg.payload != '{"value": null}' and msg.payload != b'{"value": null}':
+                grid = json.loads(msg.payload)
+                grid = round(float(grid['value']), 2)
+            else:
+                print("Grid war Null und wurde ignoriert")
 
         if msg.topic == "N/" + cerboserial + "/vebus/276/Soc":   # Aktueller SoC
+            if msg.payload != '{"value": null}' and msg.payload != b'{"value": null}':
+                soc = json.loads(msg.payload)
+                soc = round(float(soc['value']), 2)
+            else:
+                print("Soc war Null und wurde ignoriert")
 
-            soc = json.loads(msg.payload)
-            soc = round(float(soc['value']), 2)
-
-        if msg.topic == "N/" + cerboserial + "/system/0/Dc/Battery/Power":   # Akku Power
-
-            power = json.loads(msg.payload)
-            power = round(float(power['value']), 2)
+        if msg.topic == "N/" + cerboserial + "/system/0/Dc/Battery/Power" and msg.payload != b'{"value": null}':   # Akku Power
+            if msg.payload != '{"value": null}':
+                power = json.loads(msg.payload)
+                power = round(float(power['value']), 2)
+            else:
+                print("Akku Power war Null und wurde ignoriert")
 
     except Exception as e:
+        logging.exception("Programm BFtS100 ist abgestürzt. (on message Funkion)")
         print(e)
         print("Im BFtS100 Programm ist etwas beim auslesen der Nachrichten schief gegangen")
 
@@ -95,25 +102,30 @@ client.loop_start()
 time.sleep(2)
 print(grid, soc, power)
 while(1):
-    print(durchlauf)
-    durchlauf = durchlauf + 1
-    if soc >= 98:
-        print("Akku SoC ist bereits über 98% =)\n")
-    elif grid <= minexportwatt and power <= Watttreshold:
-        if power <= minexportwatt+100:
-            print("Aus dem Akku wird aktuell zuviel ins Netz exportiert!")
-        elif timetresholdis == timetresholsoll:
-            print("Akku scheint voll zu sein, setze SoC auf 100%")
-            client.publish("W/" + cerboserial + "/vebus/276/Soc", '{"value": 100 }')
-            timetresholdis = 0
+    try:
+        print(durchlauf)
+        durchlauf = durchlauf + 1
+        if soc >= 98:
+            print("Akku SoC ist bereits über 98% =)\n")
+        elif grid <= minexportwatt and power <= Watttreshold:
+            if power <= minexportwatt+100:
+                print("Aus dem Akku wird aktuell zuviel ins Netz exportiert!")
+            elif timetresholdis == timetresholsoll:
+                print("Akku scheint voll zu sein, setze SoC auf 100%")
+                client.publish("W/" + cerboserial + "/vebus/276/Soc", '{"value": 100 }')
+                timetresholdis = 0
+            else:
+                print("Limits wurden erreicht. Wartezeit: " + str(timetresholdis) + " Minuten von " + str(timetresholsoll) + " Minuten")
+                timetresholdis = timetresholdis + 1
         else:
-            print("Limits wurden erreicht. Wartezeit: " + str(timetresholdis) + " Minuten von " + str(timetresholsoll) + " Minuten")
-            timetresholdis = timetresholdis + 1
-    else:
-        if grid <= minexportwatt:
-            print("Akku wird noch zuviel geladen. Aktueller Energiefluss: " + str(power) + " Limit: " + str(Watttreshold))
-            timetresholdis = 0
-        else:
-            print("Es wird zuwenig exportiert! Aktueller Energiefluss: " + str(grid) + " Limit: " + str(minexportwatt))
-            timetresholdis = 0
-    time.sleep(60)
+            if grid <= minexportwatt:
+                print("Akku wird noch zuviel geladen. Aktueller Energiefluss: " + str(power) + " Limit: " + str(Watttreshold))
+                timetresholdis = 0
+            else:
+                print("Es wird zuwenig exportiert! Aktueller Energiefluss: " + str(grid) + " Limit: " + str(minexportwatt))
+                timetresholdis = 0
+        time.sleep(60)
+    except Exception as e:
+        logging.exception("Programm BFtS100 ist abgestürzt. (while Schleife)")
+        print(e)
+        print("Im BFtS100 Programm ist etwas beim auslesen der Nachrichten schief gegangen")
