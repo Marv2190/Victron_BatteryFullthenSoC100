@@ -15,7 +15,7 @@ broker_address = "192.168.1.xxx"
 #  Einstellen der Limits
 
 Watttreshold = 200  # LadeLimit unter dessen das Script aktiv wird.
-minexportwatt = -1000  # Wattlimit, darunter wird das Script nicht aktiv.
+minexportwatt = -500  # Wattlimit, darunter wird das Script nicht aktiv.
 timetresholsoll = 5  # Wieviel Minuten müssen andere Limits erreicht sein, um Akku auf 100% zu setzen.
 
 # Variblen setzen
